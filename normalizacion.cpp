@@ -22,7 +22,7 @@ struct Mozo{
 };
 
 
-/* struct del nodo que relaciona a cada mozo con el siguiente */
+/* struct del nodo de cada mozo */
 struct NodoMozo{
 	Mozo info;
 	NodoMozo* sig;
@@ -38,16 +38,14 @@ struct Comanda{
 };
 
 
-/* struct que define una lista de comandas realizadas en una fecha especifica. Es una
-sublista de la lista "NodoFecha" */
+/* struct del nodo de cada comanda */
 struct NodoComanda{
 	Comanda info;
 	NodoComanda* sig;
 };
 
 
-/* struct que define una lista de nodos, donde cada nodo representa una fecha en la que
-se realizaron comandas */
+/* struct del nodo de cada fecha en que se realizaron comandas */
 struct NodoFecha {
 	char fecha[11];
 	NodoComanda* listaComandas;
@@ -77,8 +75,8 @@ void guardarYordenarMozos (){
 		return;
 	}
 	
-	NodoMozo* lista = NULL; /* puntero a el primer nodo */
-	int len = 0;
+	NodoMozo* lista = NULL; // puntero a el primer nodo 
+	int len = 0; // cantidad de nodos en la lista
 	
 	ComandaHistorica comanda;
 	while(fread(&comanda, sizeof(ComandaHistorica), 1, f)==1){
@@ -86,7 +84,7 @@ void guardarYordenarMozos (){
 		NodoMozo* punteroAux = lista; /* puntero a el nodo de comapracion */
 		NodoMozo* encontrado = NULL;
 		
-		// while que recorre y compara letra por letra
+		// while que recorre nodos en lista, comparando letra por letra
 		while (punteroAux != NULL){
 			int i=0;
 			bool sonIguales = true;
@@ -104,7 +102,7 @@ void guardarYordenarMozos (){
 		}
 		
 		// accion consecuente 
-		if (encontrado == NULL){ // cuando no existe, se crea un nuevo nodo (un nuevo mozo)
+		if (encontrado == NULL){ // cuando no existe el mozo, se crea un nuevo nodo 
 			NodoMozo* nuevoMozo = new NodoMozo();
 			len++;
 			
@@ -118,7 +116,7 @@ void guardarYordenarMozos (){
 			}
 			nuevoMozo->info.nombre[i] = '\0';
 			
-			// agregar contraseña encriptada ????? (agregar)
+			// agregar contraseña encriptada ????? 
 			char contraChar[20]; 
 			sprintf(contraChar, "%d", nuevoMozo->info.idMozo); // Estructrua auxiliar! convierte dato int en dato char
 			encriptarContra(contraChar, nuevoMozo->info.password); 
@@ -144,11 +142,10 @@ void guardarYordenarMozos (){
 		return;
 	}
 	
-	NodoMozo* mozo = lista; // puntero que apunta al primer nodo (mozo) de la lista
-	while (mozo != NULL){
-		fwrite(&(mozo->info), sizeof(Mozo),1, mozos); // escribimos en el archivo solo los datos de la struct "mozo" (se encuentran en "info"
-		NodoMozo* borrarPuntero = mozo; // guardamos puntero en un puntero auxiliar
-		mozo = mozo->sig; // avanzar puntero valido para la funcion (siguiente nodo)
+	while (lista != NULL){
+		fwrite(&(lista->info), sizeof(Mozo),1, mozos); // escribimos en el archivo solo los datos de la struct "mozo" (se encuentran en "info"
+		NodoMozo* borrarPuntero = lista; // guardamos puntero en un puntero auxiliar
+		lista = lista->sig; // avanzar puntero valido para la funcion (siguiente nodo)
 		delete borrarPuntero; // borrar/liberar memoria de puntero (nodo) ya usado
 	}
 	fclose(mozos);
@@ -179,6 +176,8 @@ void leerYmostrarMozos() {
 }
 
 
+
+/* funcion que retorna el id del mozo de acuerdo al nombre ingresado, buscandolo en mozos.dat */
 int buscarIdMozo (char nombreMozo[]){
 	FILE* f = fopen("mozos.dat", "rb");
 	int encontrado = -1;
@@ -206,7 +205,7 @@ int buscarIdMozo (char nombreMozo[]){
 }
 
 
-/* funcion que */
+/* funcion que lee comandas_hisotricas.dat y crea por cada fecha un archivo con las comandas realizadas ese dia*/
 void separarComandasPorFecha (){
 	FILE* f = fopen("datos/comandas_historicas.dat", "rb");
 	if (f == NULL){
@@ -219,10 +218,11 @@ void separarComandasPorFecha (){
 	
 	while (fread(&comanda, sizeof(ComandaHistorica), 1, f) == 1){
 		
-		NodoFecha* fechaAux = listaFechas;
+		NodoFecha* fechaAux = listaFechas; // puntero de comparacion
 		NodoFecha* encontrado = NULL;
 		
-		while (fechaAux != NULL){ // busca si la fecha ya existe entre todos las que hay
+		// busca si la fecha ya existe entre todos las que hay en la lista, comaprando caracter por caracter
+		while (fechaAux != NULL){ 
 			bool sonIguales = true;
 			int i=0;
 			while (sonIguales && comanda.fecha[i] != '\0' && fechaAux->fecha[i] != '\0'){
@@ -239,17 +239,18 @@ void separarComandasPorFecha (){
 		}
 		
 		// accion consecuente
-		if (encontrado == NULL){ // no existe la fecha todavia. Se agrega
+		if (encontrado == NULL){ // no existe la fecha todavia. Se agrega un nuevo nodo
 			NodoFecha* nuevaFecha = new NodoFecha;
 			
-			int i=0;
+			// copia y agrega fecha
+			int i=0; 
 			while (comanda.fecha[i] != '\0'){
 				nuevaFecha->fecha[i] = comanda.fecha[i];
 				i++;
 			}
 			nuevaFecha->fecha[i] = '\0';
 			
-			nuevaFecha->listaComandas = NULL;
+			nuevaFecha->listaComandas = NULL; // asigna como vacio al puntero de su sublista
 			
 			// se enlaza el nuevo nodo al inicio de la lista
 			nuevaFecha->sig = listaFechas;
@@ -277,14 +278,15 @@ void separarComandasPorFecha (){
 	
 	while (fechaActual != NULL){ // ciclo que recorre cada nodo (cada fecha)
 		char nombreArchivo[50];
-		sprintf(nombreArchivo, "comandas_%s.dat", fechaActual->fecha); // Estructura auxiliar!! 
+		sprintf(nombreArchivo, "comandas_%s.dat", fechaActual->fecha); // Estructura auxiliar!! copia la fecha con una estructura determinada y lo guarda en la varibale nombreArchivo
 		
 		FILE* f = fopen(nombreArchivo, "wb");
 		if (f == NULL){
 			cout<<"error, no se pudo abrir un nuevo archivo"<<endl;
 		}
 		else{
-			NodoComanda* comandaActual = fechaActual->listaComandas;
+			NodoComanda* comandaActual = fechaActual->listaComandas; // puntero al primer nodo (comanda) de la fecha
+			
 			while (comandaActual != NULL){ // ciclo que recorre cada nodo (cada comanda) de esta fecha
 			     fwrite(&(comandaActual->info), sizeof(Comanda), 1, f);
 			     NodoComanda* temp = comandaActual;
