@@ -53,6 +53,15 @@ struct NodoFecha {
 };
 
 
+/* struct de archivo "inventario.dat" */
+struct Producto {
+	int codigo;
+	char descripcion[50];
+	float precio;
+	int stockActual;
+};
+
+
 /* funcion que crea modifica la contraseña de los mozos para su posterior verificacion,
 usando su ID como texto (char) y una constante K definida arbitrariamente*/
 void encriptarContra (char* contrasenia, char* destino){
@@ -63,6 +72,22 @@ void encriptarContra (char* contrasenia, char* destino){
 		i++;
 	}
 	destino[i] = '\0';
+}
+
+
+/* funcion de comapracion entre dos parametros A y B */
+bool comparacion(char cadenaA[], char cadenaB[]){
+	int i=0;
+	while (cadenaA[i] != '\0' && cadenaB[i] != '\0'){
+		if (cadenaA[i] != cadenaB[i]){
+			return false;
+		}
+		i++;
+	}
+	if (cadenaA[i] == '\0' && cadenaB[i] == '\0'){
+		return true;
+     }
+     return false;
 }
 
 
@@ -81,35 +106,31 @@ void guardarYordenarMozos (){
 	ComandaHistorica comanda;
 	while(fread(&comanda, sizeof(ComandaHistorica), 1, f)==1){
 		
-		NodoMozo* punteroAux = lista; /* puntero a el nodo de comapracion */
+		NodoMozo* punteroAux = lista; // puntero a el nodo de comapracion 
 		NodoMozo* encontrado = NULL;
 		
-		// while que recorre nodos en lista, comparando letra por letra
 		while (punteroAux != NULL){
-			int i=0;
-			bool sonIguales = true;
-			while (sonIguales && comanda.nombreMozo[i] != '\0' && punteroAux->info.nombre[i] != '\0'){
-				if (comanda.nombreMozo[i] != punteroAux->info.nombre[i]){
-					sonIguales = false;
-				}
-				i++;
-			}
-			if (sonIguales && comanda.nombreMozo[i] == '\0' && punteroAux->info.nombre[i] == '\0'){
-				encontrado = punteroAux;
-				break;
-			}
-			punteroAux = punteroAux->sig;
+			bool sonIguales = comparacion(comanda.nombreMozo, punteroAux->info.nombre); // verificamos si el mozo ya esta en la lista
+		     if (sonIguales){
+			     encontrado = punteroAux;
+			     break;
+		}
+		punteroAux = punteroAux->sig;
 		}
 		
 		// accion consecuente 
-		if (encontrado == NULL){ // cuando no existe el mozo, se crea un nuevo nodo 
+		if (encontrado != NULL){ // cuando si existe, se suma la comision al mozo
+			encontrado->info.totalComision += comanda.comision;
+		}
+		else { // cuando no existe el mozo, se crea un nuevo nodo 
 			NodoMozo* nuevoMozo = new NodoMozo();
 			len++;
 			
 			// agregamos los datos pertenecientes al mozo
 			nuevoMozo->info.idMozo = len; // agregar id
 			
-			int i=0; // agregar nombre
+			// agregar nombre
+			int i=0; 
 			while (comanda.nombreMozo[i] != '\0'){
 				nuevoMozo->info.nombre[i] = comanda.nombreMozo[i];
 				i++;
@@ -127,26 +148,22 @@ void guardarYordenarMozos (){
 			nuevoMozo->sig = lista; 
 			lista = nuevoMozo;
 		}
-			
-		else{ // cuando si existe, se suma la comision al mozo
-			encontrado->info.totalComision += comanda.comision;
-		}
 	}
 	fclose(f);
 	
 	/* recorrer la lista creada con mozos y guardar a cada uno (cada nodo) en un nuevo archivo llamado 
 	"mozos.dat" . Hacer "delete" para cada "new" realizado */
 	FILE* mozos = fopen("mozos.dat", "wb");
-	if (mozos==NULL){
+	if (mozos == NULL){
 		cout<<"error, no se pudo crear el archivo ´mozos.dat´"<<endl;
 		return;
 	}
 	
 	while (lista != NULL){
 		fwrite(&(lista->info), sizeof(Mozo),1, mozos); // escribimos en el archivo solo los datos de la struct "mozo" (se encuentran en "info"
-		NodoMozo* borrarPuntero = lista; // guardamos puntero en un puntero auxiliar
+		NodoMozo* temp = lista; // guardamos puntero en un puntero auxiliar
 		lista = lista->sig; // avanzar puntero valido para la funcion (siguiente nodo)
-		delete borrarPuntero; // borrar/liberar memoria de puntero (nodo) ya usado
+		delete temp; // borrar/liberar memoria de puntero (nodo) ya usado
 	}
 	fclose(mozos);
 	
@@ -181,31 +198,26 @@ void leerYmostrarMozos() {
 int buscarIdMozo (char nombreMozo[]){
 	FILE* f = fopen("mozos.dat", "rb");
 	int encontrado = -1;
+	
 	if (f == NULL){
 		cout<<"error, no se pudo abrir el archivo ´mozos.dat´"<<endl;
 		return encontrado;
 	}
+	
 	Mozo m;
 	while (fread(&m, sizeof(Mozo), 1, f)==1){
-		bool sonIguales = true;
-		int i=0;
-		while (sonIguales && nombreMozo[i] != '\0' && m.nombre[i] != '\0'){
-			if (nombreMozo[i] != m.nombre[i]){
-				sonIguales = false;
-			}
-			i++;
-		}
-		if (sonIguales && nombreMozo[i] == '\0' && m.nombre[i] == '\0'){
+		bool sonIguales = comparacion(nombreMozo, m.nombre);
+		if (sonIguales){
 			encontrado = m.idMozo;
 			break;
-		}
+	     }
 	}
 	fclose(f);
 	return encontrado;
 }
 
 
-/* funcion que lee comandas_hisotricas.dat y crea por cada fecha un archivo con las comandas realizadas ese dia*/
+/* funcion que lee comandas_hisotricas.dat y crea por cada fecha un archivo con las comandas realizadas ese dia */
 void separarComandasPorFecha (){
 	FILE* f = fopen("datos/comandas_historicas.dat", "rb");
 	if (f == NULL){
@@ -223,17 +235,10 @@ void separarComandasPorFecha (){
 		
 		// busca si la fecha ya existe entre todos las que hay en la lista, comaprando caracter por caracter
 		while (fechaAux != NULL){ 
-			bool sonIguales = true;
-			int i=0;
-			while (sonIguales && comanda.fecha[i] != '\0' && fechaAux->fecha[i] != '\0'){
-				if (comanda.fecha[i] != fechaAux->fecha[i]){
-				sonIguales =false;
-				}
-				i++;
-			}
-			if (sonIguales && comanda.fecha[i] == '\0' && fechaAux->fecha[i] == '\0'){
-				encontrado = fechaAux;
-				break;
+		     bool sonIguales = comparacion(comanda.fecha, fechaAux->fecha);
+		     if(sonIguales){
+		     	encontrado = fechaAux;
+		     	break;
 			}
 			fechaAux = fechaAux->sig;
 		}
@@ -277,9 +282,37 @@ void separarComandasPorFecha (){
 	NodoFecha* fechaActual = listaFechas;
 	
 	while (fechaActual != NULL){ // ciclo que recorre cada nodo (cada fecha)
-		char nombreArchivo[50];
-		sprintf(nombreArchivo, "comandas_%s.dat", fechaActual->fecha); // Estructura auxiliar!! copia la fecha con una estructura determinada y lo guarda en la varibale nombreArchivo
 		
+		// codigo que copia el nombre del archivo correspondiente en uan variable llamasa nombreArchivo para usarla al momento de crear el archivo
+		char nombreArchivo[30];
+		int caracteres = 0;
+		
+		char texto1[] = "comandas_";
+		int i = 0;
+		while (texto1[i] != '\0'){
+			nombreArchivo[caracteres] = texto1[i];
+			caracteres++;
+			i++; 
+		}
+		
+		int j = 0;
+		while (fechaActual->fecha[j] != '\0'){
+			nombreArchivo[caracteres] = fechaActual->fecha[j];
+			caracteres++;
+			j++;
+		}
+		
+		char texto2[] = ".dat";
+		int k = 0;
+		while (texto2[k] != '\0'){
+			nombreArchivo[caracteres] = texto2[k];
+			caracteres++;
+			k++;
+		}
+		
+		nombreArchivo[caracteres] = '\0';
+		
+		// craer archivo correspondiente
 		FILE* f = fopen(nombreArchivo, "wb");
 		if (f == NULL){
 			cout<<"error, no se pudo abrir un nuevo archivo"<<endl;
@@ -295,7 +328,6 @@ void separarComandasPorFecha (){
 		     }
 		     fclose(f);
 		}	
-		
 		NodoFecha* temp = fechaActual;
 		fechaActual = fechaActual->sig;
 		delete temp;
@@ -328,22 +360,92 @@ void mostrarComandas(const char fecha[]) {
 }
 
 
+/* funcion que el archivo existente "inventario.dat" y lo actualiza segun las ventas realizadas registradas 
+"comandas_histroicas.dat" */
+void actualizarInventario (){
+	//abrimos "comandas_hisoricas" en modo lectura
+	FILE* f = fopen("datos/comandas_historicas.dat", "rb");
+	if (f == NULL){
+		cout<<"error, no se pudo abrir el archivo ´comandas_historicas.dat´"<<endl;
+		return;
+	}
+	
+	// abrimos "inventario" en modo lectura ye scritura para reescribirlo ya atcualizarlo
+	FILE* f2 = fopen("datos/inventario.dat", "rb+");
+	if (f2 == NULL){
+		cout<<"error, no se pudo abrir el archivo ´inventario.dat´"<<endl;
+		return;
+	}
+	
+	// recorremos los registros del archivo "comandas_hoistroicas"
+	ComandaHistorica comanda;
+	while (fread(&comanda, sizeof(ComandaHistorica), 1, f)==1){
+		
+		// "devolvemos el puntero del archivo "inventario" al inicio
+		fseek(f2, 0, SEEK_SET); 
+		
+		// recorremos archivo "inventario"
+		Producto produ;
+		while (fread(&produ, sizeof(Producto), 1, f2)==1){
+			if (comanda.codigoProducto == produ.codigo){
+				produ.stockActual -= comanda.cantidad; // restamos al stock la cantidad vendida
+				fseek(f2, -(long)sizeof(Producto), SEEK_CUR); // retrocedemos el puntero un registro hacia atras
+				fwrite(&produ, sizeof(Producto), 1, f2); // reescribimos con la actualizacion implementada
+				break;
+			}
+		}
+	}
+	fclose(f);
+	fclose(f2);
+	cout<<"inventario correctamente actualizado"<<endl;	
+}
+
+void mostrarInventario(){
+	FILE* f = fopen("datos/inventario.dat", "rb");
+	if (f == NULL){
+		cout<<"error, no se pudo abrir ela rchivo ´inventario.dat´"<<endl;
+		return;
+	}
+	cout<<"CONTENIDO DEL INVENTARIO"<<endl;
+	Producto produ;
+	while (fread(&produ, sizeof(Producto), 1, f)==1){
+		cout<<"- Codigo: "<<produ.codigo<<endl;
+		cout<<"- Descripcion: "<<produ.descripcion<<endl;
+		cout<<"- Precio: $"<<produ.precio<<endl;
+		cout<<"- Stock: "<<produ.stockActual<<endl;
+		cout<<" "<<endl;
+	}
+	fclose(f);
+}
+
+
+
 int main() {
     guardarYordenarMozos(); // creacion de mozos.dat
     cout<<"La operacion se realizo con exito"<<endl;
     cout<<" "<<endl;
-    
     leerYmostrarMozos(); // mostrar contenido guardado en mozos.dat 
     
-    separarComandasPorFecha();
-    cout<<"La operacion se realizo con exito"<<endl; // creacion de varios archivos
+    cout<<"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"<<endl;
+    cout<<" "<<endl;
     
+    separarComandasPorFecha(); // creacion de varios archivos
+    cout<<"La operacion se realizo con exito"<<endl;
+    cout<<" "<<endl; 
     mostrarComandas("02-06-2025"); // mostar contenido guardado ena rchivo de la fecha indicada
     mostrarComandas("03-06-2025");
     mostrarComandas("04-06-2025");
     mostrarComandas("05-06-2025");
     mostrarComandas("06-06-2025");
     mostrarComandas("07-06-2025");
+    cout<<" "<<endl;
+    
+    cout<<"<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"<<endl;
+    cout<<" "<<endl;
+    
+    actualizarInventario(); // actualizacion de "inventario.dat"
+    cout<<" "<<endl;
+    mostrarInventario(); // mostrar contendio del archivo "inventario.dat"
 
     return 0;
 }
