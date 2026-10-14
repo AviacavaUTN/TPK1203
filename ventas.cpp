@@ -28,6 +28,18 @@ struct Comanda {
 	int cantidad; 
 	float comision; 
 };
+struct Nodo {
+	Comanda info;
+	Nodo* sig;
+};
+
+Nodo* crearNodo(Comanda valor) {
+	Nodo* nuevoNodo = new Nodo();
+	nuevoNodo->info = valor;
+	nuevoNodo->sig = NULL;
+	return nuevoNodo;
+};
+
 
 const float TASA_COMISION = 0.10f;   // la comision de cada venta es el 10% de lo vendido
 
@@ -38,8 +50,9 @@ bool valido(int cod,const char* Archivo);// verifica el mozo
 bool password(char pass[], char mpass[]); // verifica la contraseña del mozo
 void ordenar(const char* Archivo); // ordena la planilla por mozo
 void planilla(int dia, int mes, int anio, char nombre[]); // crea la planilla del día
-void ordenamientoBurbuja(Comanda vec[], int len); // ordena el vector de comandas por mozo
 bool validarFecha(int dia, int mes, int anio); // valida la fecha ingresada
+Nodo* insertarOrdenado(Nodo* inicio, Comanda valor); // inserta las comandas en una lista ordenada por mozo
+void borrarLista(Nodo*& lista);
 
 
 int main(){
@@ -210,45 +223,39 @@ bool password(char pass [], char mpass[]) {
 	return true;
 }
 
-void ordenar(const char* Archivo) { // funcion que pasa el archivo a un array y lo ordena por mozo
+void ordenar(const char* Archivo) { // funcion que pasa a una lista ordenada por mozo
 	FILE* f = fopen(Archivo, "rb");
 	if (f == NULL) {
 		cout << "Error al abrir el archivo." << endl;
 		return;
 	}
-	Comanda vec[900];
-	int len = 0;
+	Nodo* lista = NULL;
 	Comanda c;
 	int leido = fread(&c, sizeof(Comanda), 1, f);
-	while (leido == 1) { // paso el archivo a un array 
-		if (len < 900) {
-			vec[len] = c;
-			len++;
-		}
-		if (len >= 900) {
-			cout << "error" << endl;
-			return;
-		}
+	while (leido == 1) {  
+		lista = insertarOrdenado(lista, c); // inserto en la lista ordenada por mozo
 		leido = fread(&c, sizeof(Comanda), 1, f);
 	}
-
 	fclose(f);
-	ordenamientoBurbuja(vec, len); // ordeno el array por mozo
+
 	FILE* f2 = fopen(Archivo, "wb");
 	if (f2 == NULL) {
 		cout << "Error al abrir el archivo." << endl;
+		borrarLista(lista);
 		return;
 	}
-	for (int i = 0; i < len; i++) {
-		fwrite(&vec[i], sizeof(Comanda), 1, f2); // paso el array a un archivo otra vez
+	Nodo* actual = lista;
+	while (actual != NULL) {
+		fwrite(&actual->info, sizeof(Comanda), 1, f2); // paso la lista a un archivo otra vez
+		actual = actual->sig;
 	}
-	
 	fclose(f2);
+	borrarLista(lista);
 }
 
 void planilla(int dia, int mes, int anio, char nombre[]) {
 // Abre o crea la planilla de ese día 
-   sprintf(nombre, "comandas_%d-%d-%d.dat", dia,mes,anio);
+ sprintf(nombre, "comandas_%d-%d-%d.dat",dia,mes,anio);
 	FILE* f = fopen(nombre, "ab+");
 	if (f == NULL) {
 		cout << "Error al abrir el archivo de comandas." << endl;
@@ -257,17 +264,6 @@ void planilla(int dia, int mes, int anio, char nombre[]) {
 	fclose(f);
 }
 
-void ordenamientoBurbuja(Comanda vec[], int len) {
-	for (int i = 0; i < len - 1; i++) {
-		for (int j = 0; j < len - i - 1; j++) {
-			if (vec[j].idMozo > vec[j + 1].idMozo) {
-				Comanda temp = vec[j];
-				vec[j]= vec[j + 1];
-				vec[j + 1] = temp;
-			}
-		}
-	}
-}
 bool validarFecha(int dia, int mes, int anio) {
 	if (dia < 1 || dia > 31) {
 		return false;
@@ -298,4 +294,29 @@ bool validarFecha(int dia, int mes, int anio) {
 		return dia <= 29;
 	}
 	return false;
+}
+
+Nodo* insertarOrdenado(Nodo* inicio, Comanda valor) {
+	Nodo* nuevoNodo = crearNodo(valor);
+
+	// Caso especial: lista vacia o el valor va primero
+	if (inicio == NULL || valor.idMozo < inicio->info.idMozo) {
+		nuevoNodo->sig = inicio;
+		return nuevoNodo;
+	}
+
+	Nodo* actual = inicio;
+	while (actual->sig != NULL && actual->sig->info.idMozo < valor.idMozo) {
+		actual = actual->sig;
+	}
+	nuevoNodo->sig = actual->sig;
+	actual->sig = nuevoNodo;
+	return inicio;
+}
+void borrarLista(Nodo*& lista) {
+	while (lista != NULL) {
+		Nodo* borrar = lista;
+		lista = lista->sig;
+		delete borrar;
+	}
 }
