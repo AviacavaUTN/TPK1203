@@ -121,7 +121,7 @@ void actualizar(const char* Archivo, int cod, int cantidadVendida) {
 					cout << "stock agotado" << endl;// si no hay mas stock
 				}
 				fclose(f);// cierro el archivo 
-				cout << "Stock actualizado con éxito" << endl;
+				cout << "Stock actualizado con exito" << endl;
 				return; // retorno para que no se ejecute el resto de la funcion
 				
 			}
@@ -148,16 +148,16 @@ void pedirVenta(const char* Archivo) {
 	Comanda c;
 	while (n != 0) {
 
-		cout << "Ingrese el código de mozo: ";
+		cout << "Ingrese el codigo de mozo: ";
 		cin >> c.idMozo;
 		bool esValido = valido(c.idMozo, "mozos.dat"); // FUNCION verifica el mozo 
 		while (!esValido) {
-			cout << "Código de mozo inválido" << endl;
+			cout << "Codigo de mozo invalido" << endl;
 			cout << "ingrese un codigo de mozo valido" << endl;
 			cin >> c.idMozo;
 			esValido = valido(c.idMozo, "mozos.dat");
 		}
-		cout << "Ingrese código del producto: ";
+		cout << "Ingrese codigo del producto: ";
 		cin >> c.codigoProducto;
 		cout << "Ingrese cantidad vendida: ";
 		cin >> c.cantidad;
@@ -168,7 +168,7 @@ void pedirVenta(const char* Archivo) {
 		float p = precio("datos/inventario.dat", c.codigoProducto);
 		while (p == -1) {
 			cout << "Producto inexistente" << endl;
-			cout << "Ingrese un código de producto válido: ";
+			cout << "Ingrese un codigo de producto válido: ";
 			cin >> c.codigoProducto;
 			p = precio("datos/inventario.dat", c.codigoProducto);
 		}
