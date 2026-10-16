@@ -45,7 +45,7 @@ const float TASA_COMISION = 0.10f;   // la comision de cada venta es el 10% de l
 
 float precio(const char* Archivo, int cod); // busca el pecio
 void actualizar(const char* Archivo, int cod, int cantidadVendida); // actualiza el stock
-void pedirventa(const char* Archivo); // pide la venta
+void pedirVenta(const char* Archivo); // pide la venta
 bool valido(int cod,const char* Archivo);// verifica el mozo
 bool password(char pass[], char mpass[]); // verifica la contraseña del mozo
 void ordenar(const char* Archivo); // ordena la planilla por mozo
@@ -68,7 +68,7 @@ int main(){
 	}
 	char planillaDia[30];
 	planilla(dia, mes, anio, planillaDia); // crea la planilla del día
-	pedirventa(planillaDia	); 
+	pedirVenta(planillaDia	); 
 
 	return 0;
 }
@@ -138,7 +138,7 @@ void actualizar(const char* Archivo, int cod, int cantidadVendida) {
 }
 
 
-void pedirventa(const char* Archivo) {
+void pedirVenta(const char* Archivo) {
 	FILE* f = fopen(Archivo, "ab+");
 	if (f == NULL) {
 		cout << "Error al abrir el archivo de comandas." << endl;
@@ -165,16 +165,16 @@ void pedirventa(const char* Archivo) {
 			cout << "ingesaste una cantidad incorrectar, vuelve a ingresarla " << endl;
 			cin >> c.cantidad;
 		}
-		float p = precio("inventario.dat", c.codigoProducto);
+		float p = precio("datos/inventario.dat", c.codigoProducto);
 		while (p == -1) {
 			cout << "Producto inexistente" << endl;
 			cout << "Ingrese un código de producto válido: ";
 			cin >> c.codigoProducto;
-			p = precio("inventario.dat", c.codigoProducto);
+			p = precio("datos/inventario.dat", c.codigoProducto);
 		}
 		c.comision = p * c.cantidad * TASA_COMISION;
 		fwrite(&c, sizeof(Comanda), 1, f);
-		actualizar("inventario.dat", c.codigoProducto, c.cantidad);
+		actualizar("datos/inventario.dat", c.codigoProducto, c.cantidad);
 		cout << "Ingrese 0 para terminar o 1 para continuar: ";
 		cin >> n;
 	
@@ -255,7 +255,7 @@ void ordenar(const char* Archivo) { // funcion que pasa a una lista ordenada por
 
 void planilla(int dia, int mes, int anio, char nombre[]) {
 // Abre o crea la planilla de ese día 
- sprintf(nombre, "comandas_%d-%d-%d.dat",dia,mes,anio);
+ sprintf(nombre, "comandas_%02d-%02d-%04d.dat",dia,mes,anio);
 	FILE* f = fopen(nombre, "ab+");
 	if (f == NULL) {
 		cout << "Error al abrir el archivo de comandas." << endl;
@@ -271,7 +271,7 @@ bool validarFecha(int dia, int mes, int anio) {
 	if (mes < 1 || mes > 12) {
 		return false;
 	}
-	if (anio < 2026) {
+	if (anio < 2020 || anio > 2026) {
 		return false;
 	}
 	switch (mes) {
