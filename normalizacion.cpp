@@ -271,10 +271,21 @@ void separarComandasPorFecha (){
 		nuevaComanda->info.codigoProducto = comanda.codigoProducto;
 		nuevaComanda->info.cantidad = comanda.cantidad;
 		nuevaComanda->info.comision = comanda.comision;
+		nuevaComanda->sig = NULL;
 		
-		// agregar la nueva comanda a la sub lista de la fecha en que se realizo (al inicio)
-		nuevaComanda->sig = encontrado->listaComandas;
-		encontrado->listaComandas = nuevaComanda;
+		// agregar la nueva comanda a la sublista de la fecha en que se realizo , de manera ordenada segun idMozo
+		if (encontrado->listaComandas == NULL || encontrado->listaComandas->info.idMozo > nuevaComanda->info.idMozo){
+			nuevaComanda->sig = encontrado->listaComandas;
+			encontrado->listaComandas = nuevaComanda;
+		}
+		else{
+			NodoComanda* actual = encontrado->listaComandas;
+			while (actual->sig != NULL && actual->sig->info.idMozo <= nuevaComanda->info.idMozo){
+				actual = actual->sig;
+			}
+			nuevaComanda->sig = actual->sig;
+			actual->sig = nuevaComanda;
+		}
 	}
 	fclose(f);
 	
