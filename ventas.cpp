@@ -45,7 +45,7 @@ const float TASA_COMISION = 0.10f;   // la comision de cada venta es el 10% de l
 
 float precio(const char* Archivo, int cod); // busca el pecio
 void actualizar(const char* Archivo, int cod, int cantidadVendida); // actualiza el stock
-void pedirVenta(const char* Archivo); // pide la venta
+void pedirventa(const char* Archivo); // pide la venta
 bool valido(int cod,const char* Archivo);// verifica el mozo
 bool password(char pass[], char mpass[]); // verifica la contraseña del mozo
 void ordenar(const char* Archivo); // ordena la planilla por mozo
@@ -53,6 +53,7 @@ void planilla(int dia, int mes, int anio, char nombre[]); // crea la planilla de
 bool validarFecha(int dia, int mes, int anio); // valida la fecha ingresada
 Nodo* insertarOrdenado(Nodo* inicio, Comanda valor); // inserta las comandas en una lista ordenada por mozo
 void borrarLista(Nodo*& lista);
+int busquedaBinaria(const char* Archivo, int valor);
 
 
 int main(){
@@ -68,77 +69,56 @@ int main(){
 	}
 	char planillaDia[30];
 	planilla(dia, mes, anio, planillaDia); // crea la planilla del día
-	pedirVenta(planillaDia	); 
+	pedirventa(planillaDia	); 
 
 	return 0;
 }
 
 float precio(const char* Archivo, int cod) {
-
-	float precio;
-	Producto prod;
-	FILE* f = fopen(Archivo, "rb"); // abro el archivo
-	if (f == NULL) {
-		cout << "Error al abrir el archivo de inventario." << endl;
+	int pos = busquedaBinaria(Archivo, cod); // busco la posicion del producto en el archivo
+	if (pos == -1) { // si no se encuentra el producto
 		return -1;
 	}
-	int leido = fread (&prod, sizeof(Producto), 1, f); // leo el codigo del producto
-	while (leido == 1) {
-		if (cod == prod.codigo) {
-			precio = prod.precio; // si el codigo coincide 
-			fclose(f);// cierro el archivo 
-			return precio; // retorno el precio
-		}
-		else if (prod.codigo > cod) { // si el codigo del producto es mayor al buscado
-			cout << "No se pudo encontrar el producto" << endl;
-			fclose(f);
-			return -1; // retorno para que no se ejecute el resto de la funcion
-		}
-			leido = fread(&prod, sizeof(Producto), 1, f); // leo el siguiente producto
+	FILE* f = fopen(Archivo, "rb");
+	if (f == NULL) {
+		cout << "Error al abrir el archivo de inventario." << endl; // si no se puede abrir el archivo
+		return -1; // para que no se ejecute el resto de la funcion
 	}
-		fclose(f);// cierro el archivo 
-		cout << "Producto no encontrado." << endl;
-		return -1; // retorno -1 si no se encuentra el producto
-	
+	Producto prod;
+	fseek(f, pos * sizeof(Producto), SEEK_SET); // me muevo a la posicion del producto
+	fread(&prod, sizeof(Producto), 1, f);// leo el producto
+	fclose(f);
+	return prod.precio;
 }
 
 
 void actualizar(const char* Archivo, int cod, int cantidadVendida) {
-		FILE* f = fopen(Archivo, "rb+"); // abro el archivo
+	int pos = busquedaBinaria(Archivo, cod); // busco la posicion del producto en el archivo
+	if (pos == -1) { // si no se encuentra el producto
+		return;
+	}
+	FILE* f = fopen(Archivo, "rb+"); // abro el archivo
 		if (f == NULL) {
 			cout << "Error al abrir el archivo de inventario." << endl; // si no se puede abrir el archivo
 			return; // para que no se ejecute el resto de la funcion
 		}
 		Producto prod;
-		int leido = fread(&prod, sizeof(Producto), 1, f); // leo el codigo del producto
-		while (leido == 1) {
-			if (cod == prod.codigo) {
-				prod.stockActual -= cantidadVendida; // resto la cantidad vendida
-				fseek(f, -sizeof(Producto), SEEK_CUR); // vuelvo al producto a modificar
-				fwrite(&prod, sizeof(Producto), 1, f); // escribo el producto actualizado
-				cout << "Stock actual: " << prod.stockActual << endl; // muestro el stock actual
-				if (prod.stockActual <= 0) {
-					cout << "stock agotado" << endl;// si no hay mas stock
-				}
-				fclose(f);// cierro el archivo 
-				cout << "Stock actualizado con exito" << endl;
-				return; // retorno para que no se ejecute el resto de la funcion
+		fseek(f, pos * sizeof(Producto), SEEK_SET); // me muevo a la posicion del producto
+		fread(&prod, sizeof(Producto), 1, f);// leo el producto
+		prod.stockActual -= cantidadVendida; // resto la cantidad vendida
+		fseek(f, -sizeof(Producto), SEEK_CUR); // vuelvo al producto a modificar
+		fwrite(&prod, sizeof(Producto), 1, f); // escribo el producto actualizado
+		cout << "Stock actual: " << prod.stockActual << endl; // muestro el stock actual
+		if (prod.stockActual <= 0) {
+			cout << "stock agotado" << endl;// si no hay mas stock
 				
-			}
-			else if (prod.codigo > cod) { // si el codigo del producto es mayor al buscado
-				cout << "No se pudo actualizar el producto" << endl;
-				fclose(f);
-				return; // retorno para que no se ejecute el resto de la funcion
-			}
-				leido = fread(&prod, sizeof(Producto), 1, f); // leo el siguiente producto
 		}
-		fclose(f);// cierro el archivo
-		cout << "No se pudo actualizar el producto" << endl;
-		
+		fclose(f);// cierro el archivo 
+		cout << "Stock actualizado con éxito" << endl;
 }
 
 
-void pedirVenta(const char* Archivo) {
+void pedirventa(const char* Archivo) {
 	FILE* f = fopen(Archivo, "ab+");
 	if (f == NULL) {
 		cout << "Error al abrir el archivo de comandas." << endl;
@@ -148,16 +128,16 @@ void pedirVenta(const char* Archivo) {
 	Comanda c;
 	while (n != 0) {
 
-		cout << "Ingrese el codigo de mozo: ";
+		cout << "Ingrese el código de mozo: ";
 		cin >> c.idMozo;
 		bool esValido = valido(c.idMozo, "mozos.dat"); // FUNCION verifica el mozo 
 		while (!esValido) {
-			cout << "Codigo de mozo invalido" << endl;
+			cout << "Código de mozo inválido" << endl;
 			cout << "ingrese un codigo de mozo valido" << endl;
 			cin >> c.idMozo;
 			esValido = valido(c.idMozo, "mozos.dat");
 		}
-		cout << "Ingrese codigo del producto: ";
+		cout << "Ingrese código del producto: ";
 		cin >> c.codigoProducto;
 		cout << "Ingrese cantidad vendida: ";
 		cin >> c.cantidad;
@@ -165,16 +145,16 @@ void pedirVenta(const char* Archivo) {
 			cout << "ingesaste una cantidad incorrectar, vuelve a ingresarla " << endl;
 			cin >> c.cantidad;
 		}
-		float p = precio("datos/inventario.dat", c.codigoProducto);
+		float p = precio("inventario.dat", c.codigoProducto);
 		while (p == -1) {
 			cout << "Producto inexistente" << endl;
-			cout << "Ingrese un codigo de producto válido: ";
+			cout << "Ingrese un código de producto válido: ";
 			cin >> c.codigoProducto;
-			p = precio("datos/inventario.dat", c.codigoProducto);
+			p = precio("inventario.dat", c.codigoProducto);
 		}
 		c.comision = p * c.cantidad * TASA_COMISION;
 		fwrite(&c, sizeof(Comanda), 1, f);
-		actualizar("datos/inventario.dat", c.codigoProducto, c.cantidad);
+		actualizar("inventario.dat", c.codigoProducto, c.cantidad);
 		cout << "Ingrese 0 para terminar o 1 para continuar: ";
 		cin >> n;
 	
@@ -255,7 +235,7 @@ void ordenar(const char* Archivo) { // funcion que pasa a una lista ordenada por
 
 void planilla(int dia, int mes, int anio, char nombre[]) {
 // Abre o crea la planilla de ese día 
- sprintf(nombre, "comandas_%02d-%02d-%04d.dat",dia,mes,anio);
+ sprintf(nombre, "comandas_%d-%d-%d.dat",dia,mes,anio);
 	FILE* f = fopen(nombre, "ab+");
 	if (f == NULL) {
 		cout << "Error al abrir el archivo de comandas." << endl;
@@ -271,7 +251,7 @@ bool validarFecha(int dia, int mes, int anio) {
 	if (mes < 1 || mes > 12) {
 		return false;
 	}
-	if (anio < 2020 || anio > 2026) {
+	if (anio < 2026) {
 		return false;
 	}
 	switch (mes) {
@@ -320,3 +300,38 @@ void borrarLista(Nodo*& lista) {
 		delete borrar;
 	}
 }
+int busquedaBinaria(const char* Archivo, int cod) {
+	FILE* f = fopen(Archivo, "rb");
+	if (f == NULL) {
+		cout << "Error al abrir el archivo." << endl;
+		return -1;
+	}
+	Producto prod;
+	int item = 8;// cambiar si se modifica la cantidad de productos en el archivo
+	int medio;
+	int izquierda = 0; // posicion inicial
+	int derecha = item - 1; // posicion final
+	while (izquierda <= derecha) {
+		medio = (izquierda + derecha) / 2; // defino el medio 
+		fseek(f, medio * sizeof(Producto), SEEK_SET); // me muevo a la mitad del archivo
+		fread(&prod, sizeof(Producto), 1, f); // leo el producto en la mitad y lo asigna a prod
+		if (prod.codigo == cod) { // si el codigo coincide
+			fclose(f);
+			return medio; // encontrado 
+		}
+		else if (prod.codigo < cod) {
+			izquierda = medio + 1; // buscar en la mitad derecha 
+		}
+		else {
+			derecha = medio - 1;
+		}
+	}
+	cout << "Producto no encontrado." << endl;
+	fclose(f);
+	return -1;  // no encontrado 
+}
+
+
+
+
+
